@@ -19,11 +19,7 @@ class DesktopCommanderBridge {
       const transport = new StdioClientTransport({
         command: config.desktopCommanderCommand,
         args: ["-y", config.desktopCommanderPackage],
-        stderr: "pipe",
-      });
-
-      transport.stderr?.on("data", (chunk) => {
-        process.stderr.write(`[desktop-commander] ${chunk}`);
+        stderr: "inherit",
       });
 
       await client.connect(transport);
