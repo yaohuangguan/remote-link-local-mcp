@@ -1,7 +1,7 @@
 {
-  "name": "remote-link",
+  "name": "remote-link-local-mcp",
   "version": "0.1.0",
-  "description": "Open, self-hostable bridge between AI clients and a local computer over MCP.",
+  "description": "Local MCP execution layer for Remote Link, backed by Desktop Commander OSS.",
   "type": "module",
   "private": true,
   "engines": {
