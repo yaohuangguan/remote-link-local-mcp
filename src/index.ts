@@ -5,7 +5,7 @@ import { config, isDeveloperMode, isFullMode } from "./config.js";
 import { desktopCommander } from "./desktop-commander.js";
 
 const server = new McpServer({
-  name: "remote-link",
+  name: "remote-link-local-mcp",
   version: "0.1.0",
 });
 
@@ -44,7 +44,7 @@ server.registerTool(
         type: "text",
         text: JSON.stringify(
           {
-            name: "remote-link",
+            name: "remote-link-local-mcp",
             version: "0.1.0",
             mode: config.mode,
             backend: "Desktop Commander OSS over local stdio",
