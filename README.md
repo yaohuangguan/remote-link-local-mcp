@@ -1,6 +1,6 @@
-# Remote Link
+# Remote Link Local MCP
 
-Remote Link is an open, self-hostable bridge between AI clients and a computer over the Model Context Protocol (MCP).
+Remote Link Local MCP is the local execution component of the Remote Link project. It exposes a computer to MCP clients through a controlled local tool surface.
 
 The first milestone is intentionally small:
 
@@ -20,7 +20,7 @@ Desktop Commander OSS
           +-- processes
 ```
 
-Remote Link does **not** reimplement filesystem and terminal automation. It uses the open-source Desktop Commander MCP server as a local execution backend and adds its own permission boundary and, later, remote transport/device layer.
+Remote Link Local MCP does **not** reimplement filesystem and terminal automation. It uses the open-source Desktop Commander MCP server as a local execution backend and adds its own permission boundary and, later, remote transport/device layer.
 
 ## Status
 
@@ -143,7 +143,7 @@ Only after those work should you restart the tunnel in developer mode.
 
 ## Why not expose Desktop Commander directly?
 
-For a local experiment, you can. Remote Link exists because the intended product needs a layer that Desktop Commander local does not provide:
+For a local experiment, you can. Remote Link Local MCP exists because the intended product needs a layer that Desktop Commander local does not provide:
 
 - explicit Safe / Developer / Full permission profiles
 - device identity and pairing
@@ -187,7 +187,7 @@ ChatGPT / Claude / Codex |   MCP clients    |
 
 Remote computer control is high impact.
 
-Remote Link starts read-oriented and keeps mutation tools out of the MCP tool list unless developer mode is explicitly enabled. This is only a first boundary; it is **not a sandbox**.
+Remote Link Local MCP starts read-oriented and keeps mutation tools out of the MCP tool list unless developer mode is explicitly enabled. This is only a first boundary; it is **not a sandbox**.
 
 Before a public release the project should add:
 
@@ -205,7 +205,7 @@ Do not treat Desktop Commander's `allowedDirectories` or command blocklist as a 
 
 ## Upstream
 
-Remote Link interoperates with [Desktop Commander MCP](https://github.com/wonderwhy-er/DesktopCommanderMCP), which is MIT licensed. Remote Link is an independent project and is not affiliated with Desktop Commander.
+Remote Link Local MCP interoperates with [Desktop Commander MCP](https://github.com/wonderwhy-er/DesktopCommanderMCP), which is MIT licensed. Remote Link is an independent project and is not affiliated with Desktop Commander.
 
 ## License
 
