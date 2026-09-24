@@ -2,7 +2,7 @@ import { Client } from "@modelcontextprotocol/client";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 
 const client = new Client({
-  name: "remote-link-smoke",
+  name: "remote-link-local-mcp-smoke",
   version: "0.1.0",
 });
 
@@ -41,14 +41,14 @@ try {
     mode?: string;
   };
 
-  if (status.name !== "remote-link" || status.mode !== "safe") {
+  if (status.name !== "remote-link-local-mcp" || status.mode !== "safe") {
     throw new Error(
       `unexpected status: ${JSON.stringify(status)}`,
     );
   }
 
   process.stdout.write(
-    `Remote Link smoke test passed with ${tools.length} safe-mode tools.\n`,
+    `Remote Link Local MCP smoke test passed with ${tools.length} safe-mode tools.\n`,
   );
 } finally {
   await client.close();
