@@ -1,211 +1,159 @@
-# Remote Link Local MCP
+# Remote Arc Local MCP
 
-Remote Link Local MCP is the local execution component of the Remote Link project. It exposes a computer to MCP clients through a controlled local tool surface.
+> Repository name is kept as `remote-link-local-mcp` for continuity. The component now follows the Remote Arc product model.
 
-The first milestone is intentionally small:
+Remote Arc Local MCP is a standalone, auditable local execution layer for Remote Arc. It exposes a deliberately small MCP tool surface and delegates filesystem/process execution to a pinned Desktop Commander OSS backend.
+
+This repository is **not currently a runtime dependency of the hosted Remote Arc CLI**. The hosted CLI embeds an equivalent bridge directly, so this project must be kept behaviorally aligned rather than assuming changes flow automatically between repositories.
+
+## Architecture
 
 ```text
-ChatGPT Work / MCP client
-          |
-          | MCP
-          v
-     Remote Link
-          |
-          | local stdio
-          v
-Desktop Commander OSS
-          |
-          +-- filesystem
-          +-- terminal
-          +-- processes
+MCP client
+   |
+   v
+Remote Arc Local MCP
+   |
+   | curated tools + local safety policy
+   v
+Desktop Commander OSS 0.2.51
+   |
+   +-- filesystem
+   +-- processes
+   +-- terminal
 ```
 
-Remote Link Local MCP does **not** reimplement filesystem and terminal automation. It uses the open-source Desktop Commander MCP server as a local execution backend and adds its own permission boundary and, later, remote transport/device layer.
+The upstream execution core is installed as a normal dependency and pinned in the lockfile. It is not launched from an unbounded `@latest` spec.
 
-## Status
+## Permission model
 
-Early proof of concept. Do not expose it to untrusted users or networks.
+### Safe · default
 
-### Safe mode (default)
-
-- `remote_link_status`
+- `remote_arc_status`
 - `list_directory`
 - `read_file`
 - `get_file_info`
 - `list_processes`
 - `core_list_tools`
 
-### Developer mode
+No file mutation or terminal execution is advertised.
+
+### Developer
+
+Adds:
+
+- `write_file`
+- `edit_block`
+- `undo_last_change`
+
+Developer mode intentionally **does not** include arbitrary terminal execution.
+
+Supported file mutations create conflict-safe Local Undo snapshots under:
+
+```text
+~/.remotearc/local-mcp/undo
+```
+
+Snapshots remain on the computer, expire after 7 days, use at most 200 MB in total, and do not overwrite newer manual edits during undo.
+
+### Full
 
 Adds:
 
 - `start_process`
-- `write_file`
-- `edit_block`
 
-### Full mode
+Terminal commands pass through Remote Arc's narrow local Safety Guard. Normal development commands run without confirmation; catastrophic patterns such as root/home recursive deletion, disk formatting/raw-disk overwrite, fork bombs and machine shutdown/reboot are blocked.
 
-Can additionally expose `core_call_tool`, a raw pass-through to the Desktop Commander tool catalog. It is deliberately disabled unless two explicit switches are enabled.
+This is still **not a full OS sandbox**. Full mode runs with the privileges of the local user.
 
 ## Requirements
 
 - Node.js 20+
-- pnpm
-- `npx` available on PATH
+- pnpm 10.17.1
 
-Desktop Commander is launched on demand with:
+## Install
 
 ```bash
-npx -y @wonderwhy-er/desktop-commander@latest
+pnpm install --frozen-lockfile
 ```
 
-## Run locally
+## Run
+
+Safe mode:
 
 ```bash
-pnpm install
 pnpm start
 ```
 
-Remote Link is currently a **stdio MCP server**, so normally an MCP host or tunnel starts it for you instead of you typing into it directly.
+Developer mode:
 
-To inspect it locally:
+```bash
+REMOTE_ARC_MODE=developer pnpm start
+```
+
+Full mode:
+
+```bash
+REMOTE_ARC_MODE=full pnpm start
+```
+
+Legacy `REMOTE_LINK_*` environment variables are still accepted for compatibility.
+
+## Inspect
 
 ```bash
 pnpm inspect
 ```
 
-## Permission modes
-
-Safe mode is the default:
+## Validate
 
 ```bash
-pnpm start
+pnpm typecheck
+pnpm test:smoke
 ```
 
-Developer mode enables terminal execution and file mutation.
+The smoke test verifies the advertised tool surface in Safe, Developer and Full modes without executing mutation or terminal tools.
 
-macOS / Linux:
+## Why keep this repository?
 
-```bash
-REMOTE_LINK_MODE=developer pnpm start
-```
+Remote Arc production currently carries an equivalent execution bridge inside its CLI for a one-command install experience. This repository remains useful as:
 
-PowerShell:
+- a small auditable reference implementation of the local trust boundary
+- a compatibility testbed for MCP SDK and Desktop Commander upgrades
+- a place to validate security policy independently of cloud/relay code
+- a future candidate for extraction into a shared package if maintaining two implementations becomes costly
 
-```powershell
-$env:REMOTE_LINK_MODE="developer"
-pnpm start
-```
+If the standalone component stops providing independent value, consolidating it into the Remote Arc monorepo is preferable to allowing the two implementations to drift.
 
-Full raw-core access requires both:
+## Dependency policy
 
-```text
-REMOTE_LINK_MODE=full
-REMOTE_LINK_ALLOW_CORE_CALL=1
-```
+Dependencies are pinned through `pnpm-lock.yaml`, and Dependabot checks npm and GitHub Actions updates weekly.
 
-This is intentionally inconvenient. A generic raw call can reach any tool the execution backend exposes.
+Important upstreams currently include:
 
-## Connect through OpenAI Secure MCP Tunnel
+- `@modelcontextprotocol/client/server` 2.1.x
+- `@wonderwhy-er/desktop-commander` 0.2.51
+- Zod 4.6.x
+- TypeScript 6.0.x
 
-Secure MCP Tunnel is useful for the PoC because the local MCP server can stay private. The tunnel client runs on the same computer, opens an outbound HTTPS connection to OpenAI, and launches Remote Link as a local stdio MCP command.
-
-After creating a tunnel in OpenAI Platform tunnel settings and installing `tunnel-client`, initialize a profile from this repository.
-
-```bash
-export CONTROL_PLANE_API_KEY="sk-..."
-
-tunnel-client init \
-  --sample sample_mcp_stdio_local \
-  --profile remote-link-local \
-  --tunnel-id YOUR_TUNNEL_ID \
-  --mcp-command "pnpm start"
-
-tunnel-client doctor --profile remote-link-local --explain
-tunnel-client run --profile remote-link-local
-```
-
-On PowerShell set `CONTROL_PLANE_API_KEY` with:
-
-```powershell
-$env:CONTROL_PLANE_API_KEY="sk-..."
-```
-
-Then in ChatGPT Developer Mode, create a personal plugin and choose **Tunnel** as the connection type.
-
-For the first test, keep Remote Link in safe mode and ask it to:
-
-1. call `remote_link_status`
-2. list a non-sensitive directory
-3. read a harmless text file
-
-Only after those work should you restart the tunnel in developer mode.
-
-## Why not expose Desktop Commander directly?
-
-For a local experiment, you can. Remote Link Local MCP exists because the intended product needs a layer that Desktop Commander local does not provide:
-
-- explicit Safe / Developer / Full permission profiles
-- device identity and pairing
-- remote transport independent of any one AI vendor
-- per-device access policy
-- audit and approval boundaries
-- future Cloudflare-hosted relay for public remote MCP use
-
-The OpenAI tunnel is a development transport, not the eventual public architecture.
-
-## Planned architecture
-
-```text
-                         +------------------+
-ChatGPT / Claude / Codex |   MCP clients    |
-                         +--------+---------+
-                                  |
-                            HTTPS / MCP
-                                  |
-                         +--------v---------+
-                         | Remote Link Edge |
-                         | Cloudflare       |
-                         +--------+---------+
-                                  |
-                         outbound encrypted
-                                  |
-                         +--------v---------+
-                         | Local Agent      |
-                         | Win / macOS/Linux|
-                         +--------+---------+
-                                  |
-                           local MCP/stdin
-                                  |
-                         +--------v---------+
-                         | Execution Core   |
-                         | Desktop Commander|
-                         +------------------+
-```
+Upgrades should pass both typecheck and the permission-surface smoke test before merging.
 
 ## Security
 
-Remote computer control is high impact.
+Remote computer access is high impact. See [SECURITY.md](./SECURITY.md).
 
-Remote Link Local MCP starts read-oriented and keeps mutation tools out of the MCP tool list unless developer mode is explicitly enabled. This is only a first boundary; it is **not a sandbox**.
+The core rules are:
 
-Before a public release the project should add:
-
-- directory-scoped permissions enforced outside the shell
-- credential/sensitive-path deny rules
-- command policy and approval gates
-- device-bound credentials
-- replay protection
-- short-lived sessions
-- encrypted transport
-- auditable tool invocations with secret redaction
-- optional container / sandbox execution
-
-Do not treat Desktop Commander's `allowedDirectories` or command blocklist as a complete security boundary when terminal execution is enabled.
+- read-only by default
+- no raw generic execution-core pass-through
+- file editing separated from terminal access
+- local-only, conflict-safe Undo for supported file writes
+- narrow catastrophic-command Safety Guard in Full mode
+- no claim that these controls form a complete sandbox
 
 ## Upstream
 
-Remote Link Local MCP interoperates with [Desktop Commander MCP](https://github.com/wonderwhy-er/DesktopCommanderMCP), which is MIT licensed. Remote Link is an independent project and is not affiliated with Desktop Commander.
+This project interoperates with [Desktop Commander MCP](https://github.com/wonderwhy-er/DesktopCommanderMCP), which is MIT licensed. Remote Arc is independent and is not affiliated with Desktop Commander.
 
 ## License
 

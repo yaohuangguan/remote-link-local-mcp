@@ -1,22 +1,28 @@
-export type RemoteLinkMode = "safe" | "developer" | "full";
+export type RemoteArcMode = "safe" | "developer" | "full";
 
-const parseMode = (value: string | undefined): RemoteLinkMode => {
+const parseMode = (value: string | undefined): RemoteArcMode => {
   if (value === "developer" || value === "full") return value;
   return "safe";
 };
 
+const env = (next: string, legacy: string) =>
+  process.env[next] || process.env[legacy];
+
 export const config = {
-  mode: parseMode(process.env.REMOTE_LINK_MODE),
+  mode: parseMode(env("REMOTE_ARC_MODE", "REMOTE_LINK_MODE")),
   desktopCommanderCommand:
-    process.env.REMOTE_LINK_DESKTOP_COMMANDER_COMMAND || "npx",
+    env(
+      "REMOTE_ARC_DESKTOP_COMMANDER_COMMAND",
+      "REMOTE_LINK_DESKTOP_COMMANDER_COMMAND",
+    ) || null,
   desktopCommanderPackage:
-    process.env.REMOTE_LINK_DESKTOP_COMMANDER_PACKAGE ||
-    "@wonderwhy-er/desktop-commander@latest",
-  allowGenericCoreCall:
-    process.env.REMOTE_LINK_ALLOW_CORE_CALL === "1",
+    env(
+      "REMOTE_ARC_DESKTOP_COMMANDER_PACKAGE",
+      "REMOTE_LINK_DESKTOP_COMMANDER_PACKAGE",
+    ) || "@wonderwhy-er/desktop-commander",
 } as const;
 
-export const isDeveloperMode = () =>
+export const canEditFiles = () =>
   config.mode === "developer" || config.mode === "full";
 
-export const isFullMode = () => config.mode === "full";
+export const canUseTerminal = () => config.mode === "full";

@@ -1,3 +1,5 @@
+import process from "node:process";
+import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/client";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { config } from "./config.js";
@@ -12,15 +14,26 @@ class DesktopCommanderBridge {
 
     this.connecting = (async () => {
       const client = new Client({
-        name: "remote-link-core-client",
-        version: "0.1.0",
+        name: "remote-arc-local-core-client",
+        version: "0.2.0",
       });
 
-      const transport = new StdioClientTransport({
-        command: config.desktopCommanderCommand,
-        args: ["-y", config.desktopCommanderPackage],
-        stderr: "inherit",
-      });
+      const desktopCommanderEntry = fileURLToPath(
+        import.meta.resolve("@wonderwhy-er/desktop-commander/dist/index.js"),
+      );
+      const transport = new StdioClientTransport(
+        config.desktopCommanderCommand
+          ? {
+              command: config.desktopCommanderCommand,
+              args: ["-y", config.desktopCommanderPackage],
+              stderr: "inherit",
+            }
+          : {
+              command: process.execPath,
+              args: [desktopCommanderEntry],
+              stderr: "inherit",
+            },
+      );
 
       await client.connect(transport);
       this.client = client;
